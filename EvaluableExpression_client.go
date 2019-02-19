@@ -71,6 +71,7 @@ func (expression EvaluableExpression) traverseStages(rootStage *evaluationStage,
 			}
 			ret = append(ret, clause)
 		}
+
 		ret = simplifyTokens(ret, parameters)
 
 	}
@@ -78,7 +79,7 @@ func (expression EvaluableExpression) traverseStages(rootStage *evaluationStage,
 }
 
 func simplifyTokens(tokens []ExpressionToken, parameters map[string]interface{}) []ExpressionToken {
-	if len(tokens) > 2 {
+	if len(tokens) > 1 {
 		if new, err := NewEvaluableExpressionFromTokens(tokens); err == nil {
 			val, err := new.Evaluate(parameters)
 			if err == nil {
