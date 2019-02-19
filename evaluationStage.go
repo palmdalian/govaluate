@@ -40,6 +40,8 @@ type evaluationStage struct {
 
 	// regardless of which type check is used, this string format will be used as the error message for type errors
 	typeErrorFormat string
+
+	originalToken ExpressionToken
 }
 
 var (
