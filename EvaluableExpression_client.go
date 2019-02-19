@@ -46,14 +46,25 @@ func (expression EvaluableExpression) traverseStages(rootStage *evaluationStage,
 		}
 
 		left := expression.traverseStages(rootStage.leftStage, parameters)
-		ret = append(ret, left...)
 
-		if rootStage.originalToken.Value != nil {
+		okToAdd := false
+		// Remove any left sides that have evaluated to true and root op is &&
+		okToAdd = dropLeadingTrues(left, rootStage.originalToken)
+		if okToAdd {
+			ret = append(ret, left...)
+		}
+
+		if rootStage.originalToken.Value != nil && okToAdd {
 			ret = append(ret, rootStage.originalToken)
 		}
 
 		right := expression.traverseStages(rootStage.rightStage, parameters)
-		ret = append(ret, right...)
+		// Remove any right sides that have evaluated to true and root op is &&
+		ret, okToAdd = dropTrailingTrues(ret, right)
+		if okToAdd {
+			ret = append(ret, right...)
+		}
+
 		if rootStage.symbol == NOOP {
 			clause := ExpressionToken{
 				Kind: CLAUSE_CLOSE,
@@ -78,6 +89,40 @@ func simplifyTokens(tokens []ExpressionToken, parameters map[string]interface{})
 		}
 	}
 	return tokens
+}
+
+func dropTrailingTrues(tokens []ExpressionToken, right []ExpressionToken) ([]ExpressionToken, bool) {
+	if !(len(tokens) > 0) || !(len(right) == 1) {
+		return tokens, true
+	}
+
+	lastToken := tokens[len(tokens)-1]
+	if !(lastToken.Kind == LOGICALOP) || right[0].Kind != BOOLEAN || !right[0].Value.(bool) {
+		return tokens, true
+	}
+
+	if lastToken.Value.(string) == AND.String() {
+		tokens = tokens[:len(tokens)-1]
+	}
+
+	return tokens, false
+}
+
+func dropLeadingTrues(left []ExpressionToken, rootToken ExpressionToken) bool {
+
+	if rootToken.Value == nil || !(len(left) == 1) {
+		return true
+	}
+
+	if !(rootToken.Kind == LOGICALOP) || left[0].Kind != BOOLEAN || !left[0].Value.(bool) {
+		return true
+	}
+
+	if rootToken.Value.(string) == AND.String() {
+		return false
+	}
+
+	return true
 }
 
 func (expression EvaluableExpression) findNextClientString(stream *tokenStream, transactions *expressionOutputStream, parameters map[string]interface{}) (string, error) {
